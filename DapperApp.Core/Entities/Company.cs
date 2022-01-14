@@ -14,7 +14,7 @@ namespace DapperApp.Core.Entities
         public string Name { get; set; }
         public string Description { get; set; }
 
-        [Column("Id","CompanyId")]
+        [Column("Branches","Id","CompanyId")]
         public ICollection<Branch> Branches { get; set; }
     }
 }

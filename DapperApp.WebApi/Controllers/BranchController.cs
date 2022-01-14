@@ -27,6 +27,14 @@ namespace DapperApp.WebApi.Controllers
         }
 
         [HttpGet]
+        [Route("[action]")]
+        public async Task<ActionResult<IEnumerable<Branch>>> GetAllJoinAsync()
+        {
+            var branches = await unitOfWork.Branches.GetAllJoinAsync();
+            return Ok(branches);
+        }
+
+        [HttpGet]
         [Route("[action]/{id}")]
         public async Task<ActionResult<Branch>> GetById(int id)
         {

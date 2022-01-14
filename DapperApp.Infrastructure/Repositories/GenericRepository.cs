@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using DapperApp.Application.Interfaces;
 using DapperApp.Core.Attributes;
+using DapperApp.Core.Entities;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -78,16 +79,28 @@ namespace DapperApp.Infrastructure.Repositories
 
         public async Task<IEnumerable<T>> GetAllJoinAsync()
         {
-            StringBuilder query = new StringBuilder("SELECT * FROM Companies");
             var propList = (from prop in GetProperties
                             let attributes = prop.GetCustomAttributes(typeof(ColumnAttribute), false)
-                            where attributes.Length >0 && (attributes[0] as ColumnAttribute)?.PrimaryKeyAttribute != null && (attributes[0] as ColumnAttribute)?.ForeignKeyAttribute != null
-                            select prop.Name).ToList();
-
-            return null;
+                            where attributes.Length > 0 && (attributes[0] as ColumnAttribute)?.PrimaryKeyAttribute != null && (attributes[0] as ColumnAttribute)?.ForeignKeyAttribute != null
+                            select prop).ToList();
+            using var connection = CreateConnection();
+            var type1 = typeof(T).GetProperty(propList[0].Name);
+            return await connection.QueryAsync<T, dynamic, T >(GenerateJoinQuery(), (b, a) => { b.GetType().GetProperty(propList[0].Name).SetValue(b, a, null); return b; }, splitOn: "CompanyId");
         }
 
-
+        private string GenerateJoinQuery()
+        {
+            StringBuilder query = new StringBuilder($"SELECT * FROM {_tableName} as A");
+            var propList = (from prop in GetProperties
+                            let attributes = prop.GetCustomAttributes(typeof(ColumnAttribute), false)
+                            where attributes.Length > 0 && (attributes[0] as ColumnAttribute)?.PrimaryKeyAttribute != null && (attributes[0] as ColumnAttribute)?.ForeignKeyAttribute != null
+                            select prop).ToList();
+            propList.ForEach(prop =>
+            {
+                query.Append($" INNER JOIN [{prop.GetCustomAttribute<ColumnAttribute>().TableName}] as B ON A.{prop.GetCustomAttribute<ColumnAttribute>().PrimaryKeyAttribute} = B.{prop.GetCustomAttribute<ColumnAttribute>().ForeignKeyAttribute} ");
+            });
+            return query.ToString();
+        }
 
         public async Task<T> GetByIdAsync(int id)
         {
